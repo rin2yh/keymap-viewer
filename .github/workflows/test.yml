@@ -6,8 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  gofmt:
-    name: gofmt
+  fmt:
+    name: go fmt
     runs-on: macos-15
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
@@ -17,12 +17,12 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: gofmt
+      - name: go fmt
         run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "::error::gofmt found unformatted files:"
-            echo "$unformatted"
+          rewritten=$(go fmt ./...)
+          if [ -n "$rewritten" ]; then
+            echo "::error::go fmt rewrote files:"
+            echo "$rewritten"
             exit 1
           fi
 
