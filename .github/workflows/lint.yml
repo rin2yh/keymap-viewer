@@ -8,7 +8,7 @@ on:
 jobs:
   format:
     name: format
-    runs-on: ubuntu-24.04
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
@@ -28,7 +28,7 @@ jobs:
 
   lint:
     name: lint
-    runs-on: ubuntu-24.04
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
@@ -37,25 +37,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # vet type-checks every transitive Cgo package, so the Ebiten and
-      # go-hid C headers must be present even though the job never builds
-      # or runs the binary.
-      - name: Install Cgo headers
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libhidapi-dev \
-            libc6-dev \
-            libgl1-mesa-dev \
-            libglu1-mesa-dev \
-            libxcursor-dev \
-            libxext-dev \
-            libxi-dev \
-            libxinerama-dev \
-            libxrandr-dev \
-            libxxf86vm-dev \
-            libasound2-dev \
-            pkg-config
+      - name: Install hidapi
+        run: brew install hidapi
 
       - name: lint
         run: go vet ./...
