@@ -41,10 +41,7 @@ func TestKeymapRender_Golden(t *testing.T) {
 
 	want := viatest.SampleSnapshot()
 
-	client, err := viatest.OpenerFromSnapshot(want)()
-	if err != nil {
-		t.Fatalf("opener: %v", err)
-	}
+	client := via.NewFromDevice(viatest.NewFakeDevice(want))
 	defer client.Close()
 
 	got, err := via.FetchSnapshot(client, def.Matrix.Rows, def.Matrix.Cols)

@@ -15,7 +15,7 @@ import (
 )
 
 // FakeDevice implements via.RawDevice by replaying canned responses to the
-// four read-only VIA commands. Writes are recorded for inspection.
+// four read-only VIA commands.
 type FakeDevice struct {
 	mu sync.Mutex
 
@@ -26,9 +26,6 @@ type FakeDevice struct {
 	// pending is the response queued for the next ReadWithTimeout, set on
 	// each Write so the request/response pairing is preserved.
 	pending []byte
-
-	writes [][]byte
-	closed bool
 }
 
 // NewFakeDevice returns a FakeDevice that serves the given snapshot for
@@ -42,39 +39,13 @@ func NewFakeDevice(snap *keymap.Snapshot) *FakeDevice {
 	}
 }
 
-// Writes returns a copy of all request frames received, in order.
-func (f *FakeDevice) Writes() [][]byte {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := make([][]byte, len(f.writes))
-	for i, w := range f.writes {
-		c := make([]byte, len(w))
-		copy(c, w)
-		out[i] = c
-	}
-	return out
-}
-
-// Closed reports whether Close was invoked.
-func (f *FakeDevice) Closed() bool {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.closed
-}
-
-// Write inspects the request, builds the matching response payload, and
-// stashes it for the next ReadWithTimeout call.
 func (f *FakeDevice) Write(p []byte) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	cp := make([]byte, len(p))
-	copy(cp, p)
-	f.writes = append(f.writes, cp)
-	f.pending = f.respond(cp)
+	f.pending = f.respond(p)
 	return len(p), nil
 }
 
-// ReadWithTimeout returns the response queued by the most recent Write.
 func (f *FakeDevice) ReadWithTimeout(p []byte, _ time.Duration) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -83,14 +54,7 @@ func (f *FakeDevice) ReadWithTimeout(p []byte, _ time.Duration) (int, error) {
 	return n, nil
 }
 
-// Close marks the device closed. Subsequent reads/writes still succeed; the
-// flag is only for assertions.
-func (f *FakeDevice) Close() error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.closed = true
-	return nil
-}
+func (f *FakeDevice) Close() error { return nil }
 
 // respond builds the 32-byte VIA response payload for a request frame. The
 // request frame is 33 bytes: [report_id=0x00, cmd, args...].
