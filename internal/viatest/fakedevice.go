@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 // Package viatest provides programmable in-memory fakes that satisfy the
 // via.RawDevice transport, for use in E2E tests that need to drive the UI
 // or the via.ReadOnlyClient without a physical HID device.

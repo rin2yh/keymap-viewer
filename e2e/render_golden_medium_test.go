@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 // Package e2e contains end-to-end tests that exercise the full read path
 // from a fake VIA HID device through via.FetchSnapshot up to the data the
 // UI's Keyboard widget would render per layer.

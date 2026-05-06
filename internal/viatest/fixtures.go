@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 package viatest
 
 import "github.com/yuuki/keymap-viewer/internal/keymap"
