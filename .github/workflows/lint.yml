@@ -6,8 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  fmt:
-    name: go fmt
+  format:
+    name: format
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
@@ -17,7 +17,7 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: go fmt
+      - name: format
         run: |
           rewritten=$(go fmt ./...)
           if [ -n "$rewritten" ]; then
@@ -26,8 +26,8 @@ jobs:
             exit 1
           fi
 
-  vet:
-    name: go vet
+  lint:
+    name: lint
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
@@ -37,8 +37,22 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Install hidapi
-        run: sudo apt-get update && sudo apt-get install -y libhidapi-dev
+      # vet type-checks every transitive Cgo package, so the Ebiten and
+      # go-hid C headers must be present even though the job never builds
+      # or runs the binary.
+      - name: Install Cgo headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libhidapi-dev \
+            libgl1-mesa-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxxf86vm-dev \
+            libasound2-dev \
+            pkg-config
 
-      - name: go vet
+      - name: lint
         run: go vet ./...
