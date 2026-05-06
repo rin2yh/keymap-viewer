@@ -54,6 +54,10 @@ type rawDevice interface {
 // device without spinning up a real HID stack.
 type RawDevice = rawDevice
 
+// Opener returns an opened ReadOnlyClient. Production code uses Open;
+// tests pass a closure that builds a client around a fake transport.
+type Opener func() (*ReadOnlyClient, error)
+
 // NewFromDevice constructs a ReadOnlyClient around a caller-supplied
 // transport. Production code should use Open; this constructor exists for
 // E2E-style tests that need to drive the client with a programmable fake.

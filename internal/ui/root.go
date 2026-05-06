@@ -14,10 +14,6 @@ import (
 	"github.com/yuuki/keymap-viewer/internal/via"
 )
 
-// ClientOpener returns an opened VIA client. ui.Root calls it on every
-// snapshot fetch.
-type ClientOpener func() (*via.ReadOnlyClient, error)
-
 // Root is the top-level widget for the read-only Remap viewer. It places the
 // Header at the top, the vertical LayerTabs along the left edge, and the
 // Keyboard filling the rest. It fetches the initial snapshot from the device
@@ -31,7 +27,7 @@ type Root struct {
 	keyboard   Keyboard
 
 	def    *keymap.Definition
-	opener ClientOpener
+	opener via.Opener
 
 	mu       sync.Mutex
 	snapshot *keymap.Snapshot
@@ -49,7 +45,7 @@ type fetchResult struct {
 
 // NewRoot constructs a Root for the given keyboard definition. The opener
 // is invoked on every snapshot fetch; production callers pass via.Open.
-func NewRoot(def *keymap.Definition, opener ClientOpener) *Root {
+func NewRoot(def *keymap.Definition, opener via.Opener) *Root {
 	r := &Root{def: def, opener: opener}
 	r.keyboard.SetDefinition(def)
 	r.header.SetTitle(def.Name)
@@ -78,7 +74,7 @@ func (r *Root) startFetch() {
 	}()
 }
 
-func readKeymap(open ClientOpener, def *keymap.Definition) (*keymap.Snapshot, error) {
+func readKeymap(open via.Opener, def *keymap.Definition) (*keymap.Snapshot, error) {
 	client, err := open()
 	if err != nil {
 		return nil, err

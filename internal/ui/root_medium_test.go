@@ -12,7 +12,7 @@ import (
 	"github.com/yuuki/keymap-viewer/internal/viatest"
 )
 
-// TestRoot_FetchesViaOpener verifies that the ClientOpener passed to NewRoot
+// TestRoot_FetchesViaOpener verifies that the via.Opener passed to NewRoot
 // is wired into the snapshot fetch path. The white-box assertions on
 // pendingResult/snapshot are why this test lives in the ui package rather
 // than e2e/.
