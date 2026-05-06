@@ -181,7 +181,14 @@ var basicKeycodes = map[uint16]string{
 	0x006C: "F17", 0x006D: "F18", 0x006E: "F19", 0x006F: "F20",
 	0x0070: "F21", 0x0071: "F22", 0x0072: "F23", 0x0073: "F24",
 
+	// Rare locking / alt-function keys; Remap labels are kept verbatim with
+	// spaces converted to newlines so the auto-shrinking cap renderer can
+	// stack tokens vertically — matches the existing "Caps\nLock" convention.
+	0x0082: "Locking\nCaps\nLock",
+	0x0083: "Locking\nNum\nLock",
+	0x0084: "Locking\nScroll\nLock",
 	0x0085: "KP,",
+	0x0086: "Num\n=\nAS400",
 
 	0x0087: "INT1", 0x0088: "INT2", 0x0089: "INT3",
 	0x008A: "INT4", 0x008B: "INT5", 0x008C: "INT6",
@@ -189,4 +196,42 @@ var basicKeycodes = map[uint16]string{
 	0x0090: "LANG1", 0x0091: "LANG2", 0x0092: "LANG3",
 	0x0093: "LANG4", 0x0094: "LANG5", 0x0095: "LANG6",
 	0x0096: "LANG7", 0x0097: "LANG8", 0x0098: "LANG9",
+
+	0x0099: "Alt\nErase", 0x009A: "SysReq", 0x009B: "Cancel",
+	0x009C: "Clear", 0x009D: "Prior", 0x009E: "Return",
+	0x009F: "Separator",
+	0x00A0: "Out", 0x00A1: "Oper",
+	0x00A2: "Clear/\nAgain", 0x00A3: "CrSel/\nProps", 0x00A4: "ExSel",
+
+	// System power keys.
+	0x00A5: "System\nPower\nDown", 0x00A6: "Sleep", 0x00A7: "Wake",
+
+	// Audio / media keys.
+	0x00A8: "Audio\nMute",
+	0x00A9: "Audio\nVol +", 0x00AA: "Audio\nVol -",
+	0x00AB: "Next", 0x00AC: "Previous",
+	0x00AD: "Media\nStop", 0x00AE: "Play", 0x00AF: "Select",
+	0x00B0: "Eject",
+
+	// Web / launcher / system shortcut keys.
+	0x00B1: "Mail", 0x00B2: "Calculator", 0x00B3: "My\nComputer",
+	0x00B4: "WWW\nSearch", 0x00B5: "WWW\nHome",
+	0x00B6: "WWW\nBack", 0x00B7: "WWW\nForward",
+	0x00B8: "WWW\nStop", 0x00B9: "WWW\nRefresh",
+	0x00BA: "WWW\nFavorite",
+	0x00BB: "Fast\nForward", 0x00BC: "Rewind",
+	0x00BD: "Screen +", 0x00BE: "Screen -",
+	0x00BF: "Open\nControl\nPanel",
+	0x00C0: "Assistant", 0x00C1: "Mission\nControl", 0x00C2: "Launchpad",
+
+	// Mouse keys.
+	0x00CD: "Mouse\n↑", 0x00CE: "Mouse\n↓",
+	0x00CF: "Mouse\n←", 0x00D0: "Mouse\n→",
+	0x00D1: "Mouse\nBtn1", 0x00D2: "Mouse\nBtn2",
+	0x00D3: "Mouse\nBtn3", 0x00D4: "Mouse\nBtn4",
+	0x00D5: "Mouse\nBtn5", 0x00D6: "Mouse\nBtn6",
+	0x00D7: "Mouse\nBtn7", 0x00D8: "Mouse\nBtn8",
+	0x00D9: "Mouse\nWh ↑", 0x00DA: "Mouse\nWh ↓",
+	0x00DB: "Mouse\nWh ←", 0x00DC: "Mouse\nWh →",
+	0x00DD: "Mouse\nAcc0", 0x00DE: "Mouse\nAcc1", 0x00DF: "Mouse\nAcc2",
 }

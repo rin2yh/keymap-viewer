@@ -57,6 +57,28 @@ func TestLabel(t *testing.T) {
 		{"M0", 0x7700, "M0"},
 		{"M5", 0x7705, "M5"},
 
+		// Audio / media / system / mouse keys; before this fix these fell
+		// through to the hex fallback. Labels mirror Remap's keycode picker
+		// strings with spaces converted to newlines for cap rendering.
+		{"Mute", 0x00A8, "Audio\nMute"},
+		{"VolUp", 0x00A9, "Audio\nVol +"},
+		{"VolDown", 0x00AA, "Audio\nVol -"},
+		{"Next", 0x00AB, "Next"},
+		{"Play", 0x00AE, "Play"},
+		{"Sleep", 0x00A6, "Sleep"},
+		{"Mail", 0x00B1, "Mail"},
+		{"BrightUp", 0x00BD, "Screen +"},
+		{"MissionControl", 0x00C1, "Mission\nControl"},
+		{"MouseUp", 0x00CD, "Mouse\n↑"},
+		{"MouseBtn1", 0x00D1, "Mouse\nBtn1"},
+		{"WheelUp", 0x00D9, "Mouse\nWh ↑"},
+		{"MouseAcc0", 0x00DD, "Mouse\nAcc0"},
+
+		// Mouse-key keycode wrapped in a modifier mask: the lookup must
+		// recurse through the basic-table fix so the cap shows the named
+		// mouse action instead of `…+0xCD`.
+		{"LSft+MouseUp", 0x02CD, "LSft+Mouse\n↑"},
+
 		{"unknown", 0xFFFF, "0xFFFF"},
 
 		{"LSft+A", 0x0204, "LSft+A"},
