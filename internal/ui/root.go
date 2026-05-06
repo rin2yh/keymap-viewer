@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 package ui
 
 import (
@@ -10,8 +8,8 @@ import (
 	"github.com/guigui-gui/guigui"
 	"github.com/guigui-gui/guigui/basicwidget"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
-	"github.com/yuuki/keymap-viewer/internal/via"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/via"
 )
 
 // Root is the top-level widget for the read-only Remap viewer. It places the
@@ -26,7 +24,8 @@ type Root struct {
 	tabs       LayerTabs
 	keyboard   Keyboard
 
-	def *keymap.Definition
+	def    *keymap.Definition
+	opener via.Opener
 
 	mu       sync.Mutex
 	snapshot *keymap.Snapshot
@@ -42,9 +41,10 @@ type fetchResult struct {
 	err  error
 }
 
-// NewRoot constructs a Root for the given keyboard definition.
-func NewRoot(def *keymap.Definition) *Root {
-	r := &Root{def: def}
+// NewRoot constructs a Root for the given keyboard definition. The opener
+// is invoked on every snapshot fetch; production callers pass via.Open.
+func NewRoot(def *keymap.Definition, opener via.Opener) *Root {
+	r := &Root{def: def, opener: opener}
 	r.keyboard.SetDefinition(def)
 	r.header.SetTitle(def.Name)
 	r.header.SetStatus("Connecting…")
@@ -67,13 +67,13 @@ func (r *Root) startFetch() {
 	r.status = "Reading keymap…"
 	r.mu.Unlock()
 	go func() {
-		snap, err := readKeymap(r.def)
+		snap, err := readKeymap(r.opener, r.def)
 		r.pendingResult.Store(&fetchResult{snap: snap, err: err})
 	}()
 }
 
-func readKeymap(def *keymap.Definition) (*keymap.Snapshot, error) {
-	client, err := via.Open()
+func readKeymap(open via.Opener, def *keymap.Definition) (*keymap.Snapshot, error) {
+	client, err := open()
 	if err != nil {
 		return nil, err
 	}

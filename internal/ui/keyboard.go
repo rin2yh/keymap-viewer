@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 package ui
 
 import (
@@ -8,7 +6,7 @@ import (
 
 	"github.com/guigui-gui/guigui"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
 )
 
 // keyUnitPx is the on-screen pixel size of a 1u key cell BEFORE the scale

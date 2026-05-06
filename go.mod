@@ -1,4 +1,4 @@
-module github.com/yuuki/keymap-viewer
+module github.com/rin2yh/keymap-viewer
 
 go 1.26.2
 

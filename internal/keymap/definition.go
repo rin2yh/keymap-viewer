@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 // Package keymap parses VIA v3 keyboard definitions and renders QMK keycodes
 // as human-readable labels for the read-only viewer.
 package keymap

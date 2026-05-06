@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 package main
 
 import (
@@ -11,9 +9,9 @@ import (
 
 	"github.com/guigui-gui/guigui"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
-	"github.com/yuuki/keymap-viewer/internal/ui"
-	"github.com/yuuki/keymap-viewer/internal/via"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/ui"
+	"github.com/rin2yh/keymap-viewer/internal/via"
 )
 
 func main() {
@@ -75,7 +73,7 @@ func main() {
 		return
 	}
 
-	root := ui.NewRoot(def)
+	root := ui.NewRoot(def, via.Open)
 	op := &guigui.RunOptions{
 		Title:         "keymap-viewer",
 		WindowSize:    image.Pt(1200, 600),

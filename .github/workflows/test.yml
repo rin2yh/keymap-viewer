@@ -1,0 +1,43 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  small:
+    name: small
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install hidapi
+        run: brew install hidapi
+
+      # -short skips both medium tests and TestRealHID_Smoke, so this job
+      # never depends on a physical device or runs the slower suites.
+      - name: small
+        run: go test -race -short -timeout 1m ./...
+
+  medium:
+    name: medium
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install hidapi
+        run: brew install hidapi
+
+      - name: medium
+        run: go test -race -timeout 5m ./...

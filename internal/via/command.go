@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 // Package via implements a strict read-only client for the VIA Raw HID
 // protocol used by QMK/VIA-compatible firmwares.
 //

@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 // Package ui hosts the read-only Remap viewer's guigui widget tree.
 package ui
 

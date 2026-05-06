@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 package via
 
 import (
@@ -12,7 +10,7 @@ import (
 
 	hid "github.com/sstallion/go-hid"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
 )
 
 func isPermissionError(err error) bool {
@@ -47,6 +45,26 @@ type rawDevice interface {
 	Write(p []byte) (int, error)
 	ReadWithTimeout(p []byte, timeout time.Duration) (int, error)
 	Close() error
+}
+
+// RawDevice is the public alias of the HID transport interface used by
+// ReadOnlyClient. External test packages implement it to inject a fake
+// device without spinning up a real HID stack.
+type RawDevice = rawDevice
+
+// Opener returns an opened ReadOnlyClient. Production code uses Open;
+// tests pass a closure that builds a client around a fake transport.
+type Opener func() (*ReadOnlyClient, error)
+
+// NewFromDevice constructs a ReadOnlyClient around a caller-supplied
+// transport. Production code should use Open; this constructor exists for
+// E2E-style tests that need to drive the client with a programmable fake.
+func NewFromDevice(dev RawDevice) *ReadOnlyClient {
+	return &ReadOnlyClient{
+		dev:     dev,
+		readBuf: make([]byte, PayloadSize),
+		timeout: defaultReadTimeout,
+	}
 }
 
 // ReadOnlyClient is the public API for talking to a VIA-compatible device.
