@@ -11,5 +11,7 @@ paths:
   `actions/checkout@v4` のようなタグ参照ではなく、`actions/checkout@<40-char-sha> # v4.3.0` の形式で commit SHA を固定する。バージョンタグは行末コメントで人間向けに残す。
 - **テストサイズで job を分割**
   small / medium / large は別ジョブで実行する。small ジョブは `-short` を付けて、実機テストや長時間テストを早期 skip させる。
+- **lint と test は別 job**
+  `gofmt` / `go vet` などの静的チェックは test job に同居させず、それぞれ独立した job として実行する。1 つの job に複数の責務を詰め込まない。
 - **ジョブ名・ステップ名で丸かっこ禁止**
   `test (small)` ではなく `test small` と書く。詳細は `text.md` を参照。

@@ -6,6 +6,43 @@ on:
     branches: [main]
 
 jobs:
+  gofmt:
+    name: gofmt
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt found unformatted files:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+  vet:
+    name: go vet
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install hidapi
+        run: brew install hidapi
+
+      - name: go vet
+        run: go vet ./...
+
   small:
     name: test small
     runs-on: macos-15
@@ -19,18 +56,6 @@ jobs:
 
       - name: Install hidapi
         run: brew install hidapi
-
-      - name: gofmt
-        run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "::error::gofmt found unformatted files:"
-            echo "$unformatted"
-            exit 1
-          fi
-
-      - name: go vet
-        run: go vet ./...
 
       # -short forces TestRealHID_Smoke in internal/via to skip without
       # touching real HID, so this job never depends on a physical device.
