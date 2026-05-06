@@ -15,7 +15,7 @@ import (
 )
 
 // ClientOpener returns an opened VIA client. ui.Root calls it on every
-// snapshot fetch. Tests inject a fake-backed opener; production uses via.Open.
+// snapshot fetch.
 type ClientOpener func() (*via.ReadOnlyClient, error)
 
 // Root is the top-level widget for the read-only Remap viewer. It places the
@@ -47,9 +47,10 @@ type fetchResult struct {
 	err  error
 }
 
-// NewRoot constructs a Root for the given keyboard definition.
-func NewRoot(def *keymap.Definition) *Root {
-	r := &Root{def: def}
+// NewRoot constructs a Root for the given keyboard definition. The opener
+// is invoked on every snapshot fetch; production callers pass via.Open.
+func NewRoot(def *keymap.Definition, opener ClientOpener) *Root {
+	r := &Root{def: def, opener: opener}
 	r.keyboard.SetDefinition(def)
 	r.header.SetTitle(def.Name)
 	r.header.SetStatus("Connecting…")
@@ -62,13 +63,6 @@ func NewRoot(def *keymap.Definition) *Root {
 	return r
 }
 
-// SetOpener overrides the VIA client opener used by snapshot fetches. Must
-// be called before the first Build pass (or before a manual reload). Passing
-// nil restores the default of via.Open.
-func (r *Root) SetOpener(o ClientOpener) {
-	r.opener = o
-}
-
 // startFetch kicks off a background snapshot fetch. Returns immediately; the
 // result is consumed by the next Tick.
 func (r *Root) startFetch() {
@@ -78,12 +72,8 @@ func (r *Root) startFetch() {
 	r.mu.Lock()
 	r.status = "Reading keymap…"
 	r.mu.Unlock()
-	open := r.opener
-	if open == nil {
-		open = via.Open
-	}
 	go func() {
-		snap, err := readKeymap(open, r.def)
+		snap, err := readKeymap(r.opener, r.def)
 		r.pendingResult.Store(&fetchResult{snap: snap, err: err})
 	}()
 }

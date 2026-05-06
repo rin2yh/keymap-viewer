@@ -12,10 +12,10 @@ import (
 	"github.com/yuuki/keymap-viewer/internal/viatest"
 )
 
-// TestRoot_FetchesViaOpener verifies that Root.SetOpener wires a custom
-// ClientOpener into the snapshot fetch path. The white-box assertions
-// (private fields like pendingResult/snapshot) are why this test lives in
-// the ui package rather than e2e/.
+// TestRoot_FetchesViaOpener verifies that the ClientOpener passed to NewRoot
+// is wired into the snapshot fetch path. The white-box assertions on
+// pendingResult/snapshot are why this test lives in the ui package rather
+// than e2e/.
 func TestRoot_FetchesViaOpener(t *testing.T) {
 	def, err := keymap.LoadEmbeddedDefinition()
 	if err != nil {
@@ -24,8 +24,7 @@ func TestRoot_FetchesViaOpener(t *testing.T) {
 	want := viatest.SampleSnapshot()
 
 	var openCalls atomic.Int64
-	root := NewRoot(def)
-	root.SetOpener(func() (*via.ReadOnlyClient, error) {
+	root := NewRoot(def, func() (*via.ReadOnlyClient, error) {
 		openCalls.Add(1)
 		return via.NewFromDevice(viatest.NewFakeDevice(want)), nil
 	})
@@ -64,36 +63,10 @@ func TestRoot_FetchesViaOpener(t *testing.T) {
 		for r := 0; r < want.Rows; r++ {
 			for c := 0; c < want.Cols; c++ {
 				if got.Keycode(l, r, c) != want.Keycode(l, r, c) {
-					t.Fatalf("keycode mismatch at (%d,%d,%d): got 0x%04X want 0x%04X",
+					t.Fatalf("keycode mismatch at %d,%d,%d: got 0x%04X want 0x%04X",
 						l, r, c, got.Keycode(l, r, c), want.Keycode(l, r, c))
 				}
 			}
 		}
 	}
-}
-
-// TestRoot_FallsBackToViaOpen confirms the default opener (when none is
-// set via SetOpener) routes through via.Open. We cannot exercise the
-// happy path without real hardware, so the assertion is that fetching
-// without an opener surfaces the via.Open error in pendingResult — which
-// proves the fallback was taken instead of a panic.
-func TestRoot_FallsBackToViaOpen(t *testing.T) {
-	def, err := keymap.LoadEmbeddedDefinition()
-	if err != nil {
-		t.Fatalf("LoadEmbeddedDefinition: %v", err)
-	}
-	root := NewRoot(def)
-	root.startFetch()
-
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		if v := root.pendingResult.Swap(nil); v != nil {
-			if v.err == nil {
-				t.Skip("via.Open unexpectedly succeeded (real device attached?)")
-			}
-			return
-		}
-		time.Sleep(2 * time.Millisecond)
-	}
-	t.Fatal("no pendingResult after 5s")
 }

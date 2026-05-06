@@ -75,7 +75,7 @@ func main() {
 		return
 	}
 
-	root := ui.NewRoot(def)
+	root := ui.NewRoot(def, via.Open)
 	op := &guigui.RunOptions{
 		Title:         "keymap-viewer",
 		WindowSize:    image.Pt(1200, 600),

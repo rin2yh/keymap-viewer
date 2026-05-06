@@ -7,12 +7,12 @@ on:
 
 jobs:
   small:
-    name: test (small)
-    runs-on: macos-latest
+    name: test small
+    runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
           cache: true
@@ -32,18 +32,18 @@ jobs:
       - name: go vet
         run: go vet ./...
 
-      # -short forces TestRealHID_Smoke (in internal/via) to skip without
+      # -short forces TestRealHID_Smoke in internal/via to skip without
       # touching real HID, so this job never depends on a physical device.
-      - name: go test (small)
+      - name: go test small
         run: go test -race -short -timeout 1m ./internal/keymap/... ./internal/via/... ./internal/viatest/...
 
   medium:
-    name: test (medium)
-    runs-on: macos-latest
+    name: test medium
+    runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
           cache: true
@@ -51,5 +51,5 @@ jobs:
       - name: Install hidapi
         run: brew install hidapi
 
-      - name: go test (medium)
+      - name: go test medium
         run: go test -race -timeout 5m ./internal/ui/... ./e2e/...
