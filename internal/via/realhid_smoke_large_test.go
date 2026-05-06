@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 //go:build smoke
 
 package via_test
