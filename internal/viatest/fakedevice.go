@@ -7,21 +7,21 @@ package viatest
 
 import (
 	"encoding/binary"
-	"sync"
 	"time"
 
 	"github.com/yuuki/keymap-viewer/internal/keymap"
 	"github.com/yuuki/keymap-viewer/internal/via"
 )
 
+// fakeProtocolVersion is what FakeDevice reports for CmdProtocolVersion.
+// VIA spec versions are big-endian 16-bit; 0x000C corresponds to v0.0.12.
+const fakeProtocolVersion uint16 = 0x000C
+
 // FakeDevice implements via.RawDevice by replaying canned responses to the
 // four read-only VIA commands.
 type FakeDevice struct {
-	mu sync.Mutex
-
-	protocolVersion uint16
-	snapshot        *keymap.Snapshot
-	keymapBuf       []byte
+	snapshot  *keymap.Snapshot
+	keymapBuf []byte
 
 	// pending is the response queued for the next ReadWithTimeout, set on
 	// each Write so the request/response pairing is preserved.
@@ -29,26 +29,20 @@ type FakeDevice struct {
 }
 
 // NewFakeDevice returns a FakeDevice that serves the given snapshot for
-// CmdGetLayerCount / CmdGetKeycode / CmdGetBuffer, and reports protocol
-// version 0x000C for CmdProtocolVersion.
+// CmdGetLayerCount / CmdGetKeycode / CmdGetBuffer.
 func NewFakeDevice(snap *keymap.Snapshot) *FakeDevice {
 	return &FakeDevice{
-		protocolVersion: 0x000C,
-		snapshot:        snap,
-		keymapBuf:       flattenSnapshot(snap),
+		snapshot:  snap,
+		keymapBuf: flattenSnapshot(snap),
 	}
 }
 
 func (f *FakeDevice) Write(p []byte) (int, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
 	f.pending = f.respond(p)
 	return len(p), nil
 }
 
 func (f *FakeDevice) ReadWithTimeout(p []byte, _ time.Duration) (int, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
 	n := copy(p, f.pending)
 	f.pending = nil
 	return n, nil
@@ -56,19 +50,16 @@ func (f *FakeDevice) ReadWithTimeout(p []byte, _ time.Duration) (int, error) {
 
 func (f *FakeDevice) Close() error { return nil }
 
-// respond builds the 32-byte VIA response payload for a request frame. The
-// request frame is 33 bytes: [report_id=0x00, cmd, args...].
+// respond builds the 32-byte VIA response payload for a 33-byte request
+// frame: [report_id=0x00, cmd, args...].
 func (f *FakeDevice) respond(req []byte) []byte {
 	resp := make([]byte, via.PayloadSize)
-	if len(req) < 2 {
-		return resp
-	}
 	cmd := via.CommandID(req[1])
 	resp[0] = byte(cmd)
 
 	switch cmd {
 	case via.CmdProtocolVersion:
-		binary.BigEndian.PutUint16(resp[1:3], f.protocolVersion)
+		binary.BigEndian.PutUint16(resp[1:3], fakeProtocolVersion)
 
 	case via.CmdGetLayerCount:
 		if f.snapshot != nil {
@@ -76,10 +67,6 @@ func (f *FakeDevice) respond(req []byte) []byte {
 		}
 
 	case via.CmdGetKeycode:
-		// req: [0x00, 0x04, layer, row, col, ...]
-		if len(req) < 5 {
-			return resp
-		}
 		layer, row, col := int(req[2]), int(req[3]), int(req[4])
 		resp[1], resp[2], resp[3] = byte(layer), byte(row), byte(col)
 		kc := uint16(0)
@@ -89,10 +76,6 @@ func (f *FakeDevice) respond(req []byte) []byte {
 		binary.BigEndian.PutUint16(resp[4:6], kc)
 
 	case via.CmdGetBuffer:
-		// req: [0x00, 0x12, off_hi, off_lo, size, ...]
-		if len(req) < 5 {
-			return resp
-		}
 		offset := int(binary.BigEndian.Uint16(req[2:4]))
 		size := int(req[4])
 		resp[1], resp[2], resp[3] = req[2], req[3], req[4]
