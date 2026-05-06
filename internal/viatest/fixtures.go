@@ -1,6 +1,6 @@
 package viatest
 
-import "github.com/yuuki/keymap-viewer/internal/keymap"
+import "github.com/rin2yh/keymap-viewer/internal/keymap"
 
 // SampleSnapshot returns a deterministic 4-layer snapshot sized to match
 // the embedded Corne v4 definition (8 rows × 7 cols). Each layer uses a

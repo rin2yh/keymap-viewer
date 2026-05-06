@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
-	"github.com/yuuki/keymap-viewer/internal/via"
-	"github.com/yuuki/keymap-viewer/internal/viatest"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/via"
+	"github.com/rin2yh/keymap-viewer/internal/viatest"
 )
 
 // TestRoot_FetchesViaOpener verifies that the via.Opener passed to NewRoot

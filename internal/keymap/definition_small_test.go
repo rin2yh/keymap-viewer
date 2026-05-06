@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
 )
 
 func TestParseDefinition_Crkbd(t *testing.T) {

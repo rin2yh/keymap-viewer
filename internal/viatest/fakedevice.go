@@ -7,8 +7,8 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
-	"github.com/yuuki/keymap-viewer/internal/via"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/via"
 )
 
 // fakeProtocolVersion is what FakeDevice reports for CmdProtocolVersion.

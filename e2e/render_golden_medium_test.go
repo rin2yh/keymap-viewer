@@ -15,9 +15,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
-	"github.com/yuuki/keymap-viewer/internal/via"
-	"github.com/yuuki/keymap-viewer/internal/viatest"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/via"
+	"github.com/rin2yh/keymap-viewer/internal/viatest"
 )
 
 var updateGolden = flag.Bool("update", false, "rewrite e2e/testdata/golden/*.txt")

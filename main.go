@@ -9,9 +9,9 @@ import (
 
 	"github.com/guigui-gui/guigui"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
-	"github.com/yuuki/keymap-viewer/internal/ui"
-	"github.com/yuuki/keymap-viewer/internal/via"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/ui"
+	"github.com/rin2yh/keymap-viewer/internal/via"
 )
 
 func main() {

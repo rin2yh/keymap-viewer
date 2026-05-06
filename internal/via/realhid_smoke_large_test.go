@@ -5,8 +5,8 @@ package via_test
 import (
 	"testing"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
-	"github.com/yuuki/keymap-viewer/internal/via"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/via"
 )
 
 // TestRealHID_Smoke talks to a physically connected Corne v4 Chocolate.

@@ -3,7 +3,7 @@ package keymap_test
 import (
 	"testing"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
 )
 
 func TestLabel(t *testing.T) {

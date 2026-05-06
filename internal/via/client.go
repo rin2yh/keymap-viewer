@@ -10,7 +10,7 @@ import (
 
 	hid "github.com/sstallion/go-hid"
 
-	"github.com/yuuki/keymap-viewer/internal/keymap"
+	"github.com/rin2yh/keymap-viewer/internal/keymap"
 )
 
 func isPermissionError(err error) bool {
