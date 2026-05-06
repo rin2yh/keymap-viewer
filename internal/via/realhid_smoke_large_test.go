@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
+//go:build smoke
+
 package via_test
 
 import (
@@ -9,25 +11,17 @@ import (
 	"github.com/yuuki/keymap-viewer/internal/via"
 )
 
-// TestRealHID_Smoke is a manual smoke test that talks to a physically
-// connected Corne v4 Chocolate. It is intentionally *not* gated by a
-// build tag so that `go test ./...` always considers it; instead, the
-// test self-skips when:
+// TestRealHID_Smoke talks to a physically connected Corne v4 Chocolate.
+// The smoke build tag keeps it out of every default test run; opt in with:
 //
-//   - `testing.Short()` is true (the CI configuration always passes
-//     `-short`, so this guarantees CI never tries to talk to hardware), or
-//   - via.Open() fails (no device attached, or no Input Monitoring grant).
+//	go test -tags smoke ./...
 //
-// To run locally with a device connected:
-//
-//	go test ./internal/via -v -run TestRealHID_Smoke
+// via.Open failure still self-skips so the user gets a clear "no device"
+// message rather than a hard failure.
 func TestRealHID_Smoke(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping real-HID smoke in -short mode")
-	}
 	client, err := via.Open()
 	if err != nil {
-		t.Skipf("skipping: real device not reachable: %v", err)
+		t.Skipf("real device not reachable: %v", err)
 	}
 	defer client.Close()
 
@@ -66,9 +60,6 @@ func TestRealHID_Smoke(t *testing.T) {
 			snap.Rows, snap.Cols, def.Matrix.Rows, def.Matrix.Cols)
 	}
 
-	// At least one keycode in layer 0 should be non-empty on a real
-	// configured keyboard. This catches "device responded but is silent"
-	// regressions (e.g. wrong endianness, off-by-one offset).
 	var nonZero int
 	for r := 0; r < snap.Rows; r++ {
 		for c := 0; c < snap.Cols; c++ {
