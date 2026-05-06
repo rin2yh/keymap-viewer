@@ -6,7 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  small:
+    name: test (small)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,5 +32,24 @@ jobs:
       - name: go vet
         run: go vet ./...
 
-      - name: go test
-        run: go test -race -short ./...
+      # -short forces TestRealHID_Smoke (in internal/via) to skip without
+      # touching real HID, so this job never depends on a physical device.
+      - name: go test (small)
+        run: go test -race -short -timeout 1m ./internal/keymap/... ./internal/via/... ./internal/viatest/...
+
+  medium:
+    name: test (medium)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install hidapi
+        run: brew install hidapi
+
+      - name: go test (medium)
+        run: go test -race -timeout 5m ./internal/ui/... ./e2e/...
