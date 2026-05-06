@@ -10,11 +10,7 @@ import (
 )
 
 func newClientForTest(d rawDevice) *ReadOnlyClient {
-	return &ReadOnlyClient{
-		dev:     d,
-		readBuf: make([]byte, PayloadSize),
-		timeout: defaultReadTimeout,
-	}
+	return NewFromDevice(d)
 }
 
 // fakeRawDevice is an in-memory rawDevice used by tests. It records every

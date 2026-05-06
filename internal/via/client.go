@@ -49,6 +49,22 @@ type rawDevice interface {
 	Close() error
 }
 
+// RawDevice is the public alias of the HID transport interface used by
+// ReadOnlyClient. External test packages implement it to inject a fake
+// device without spinning up a real HID stack.
+type RawDevice = rawDevice
+
+// NewFromDevice constructs a ReadOnlyClient around a caller-supplied
+// transport. Production code should use Open; this constructor exists for
+// E2E-style tests that need to drive the client with a programmable fake.
+func NewFromDevice(dev RawDevice) *ReadOnlyClient {
+	return &ReadOnlyClient{
+		dev:     dev,
+		readBuf: make([]byte, PayloadSize),
+		timeout: defaultReadTimeout,
+	}
+}
+
 // ReadOnlyClient is the public API for talking to a VIA-compatible device.
 //
 // By construction, ReadOnlyClient exposes ONLY get-style methods:

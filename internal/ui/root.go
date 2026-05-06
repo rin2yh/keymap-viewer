@@ -14,6 +14,10 @@ import (
 	"github.com/yuuki/keymap-viewer/internal/via"
 )
 
+// ClientOpener returns an opened VIA client. ui.Root calls it on every
+// snapshot fetch. Tests inject a fake-backed opener; production uses via.Open.
+type ClientOpener func() (*via.ReadOnlyClient, error)
+
 // Root is the top-level widget for the read-only Remap viewer. It places the
 // Header at the top, the vertical LayerTabs along the left edge, and the
 // Keyboard filling the rest. It fetches the initial snapshot from the device
@@ -26,7 +30,8 @@ type Root struct {
 	tabs       LayerTabs
 	keyboard   Keyboard
 
-	def *keymap.Definition
+	def    *keymap.Definition
+	opener ClientOpener
 
 	mu       sync.Mutex
 	snapshot *keymap.Snapshot
@@ -57,6 +62,13 @@ func NewRoot(def *keymap.Definition) *Root {
 	return r
 }
 
+// SetOpener overrides the VIA client opener used by snapshot fetches. Must
+// be called before the first Build pass (or before a manual reload). Passing
+// nil restores the default of via.Open.
+func (r *Root) SetOpener(o ClientOpener) {
+	r.opener = o
+}
+
 // startFetch kicks off a background snapshot fetch. Returns immediately; the
 // result is consumed by the next Tick.
 func (r *Root) startFetch() {
@@ -66,14 +78,18 @@ func (r *Root) startFetch() {
 	r.mu.Lock()
 	r.status = "Reading keymap…"
 	r.mu.Unlock()
+	open := r.opener
+	if open == nil {
+		open = via.Open
+	}
 	go func() {
-		snap, err := readKeymap(r.def)
+		snap, err := readKeymap(open, r.def)
 		r.pendingResult.Store(&fetchResult{snap: snap, err: err})
 	}()
 }
 
-func readKeymap(def *keymap.Definition) (*keymap.Snapshot, error) {
-	client, err := via.Open()
+func readKeymap(open ClientOpener, def *keymap.Definition) (*keymap.Snapshot, error) {
+	client, err := open()
 	if err != nil {
 		return nil, err
 	}
