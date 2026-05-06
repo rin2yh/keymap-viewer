@@ -1,0 +1,44 @@
+name: lint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  fmt:
+    name: go fmt
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: go fmt
+        run: |
+          rewritten=$(go fmt ./...)
+          if [ -n "$rewritten" ]; then
+            echo "::error::go fmt rewrote files:"
+            echo "$rewritten"
+            exit 1
+          fi
+
+  vet:
+    name: go vet
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install hidapi
+        run: sudo apt-get update && sudo apt-get install -y libhidapi-dev
+
+      - name: go vet
+        run: go vet ./...
