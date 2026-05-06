@@ -17,6 +17,9 @@ import (
 // pendingResult/snapshot are why this test lives in the ui package rather
 // than e2e/.
 func TestRoot_FetchesViaOpener(t *testing.T) {
+	if testing.Short() {
+		t.Skip("medium test; skipped under -short")
+	}
 	def, err := keymap.LoadEmbeddedDefinition()
 	if err != nil {
 		t.Fatalf("LoadEmbeddedDefinition: %v", err)

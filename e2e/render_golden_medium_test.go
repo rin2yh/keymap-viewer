@@ -34,6 +34,9 @@ var updateGolden = flag.Bool("update", false, "rewrite e2e/testdata/golden/*.txt
 // (unit space) and rendered label, matching what Keyboard.Build would
 // emit at runtime.
 func TestKeymapRender_Golden(t *testing.T) {
+	if testing.Short() {
+		t.Skip("medium test; skipped under -short")
+	}
 	def, err := keymap.LoadEmbeddedDefinition()
 	if err != nil {
 		t.Fatalf("LoadEmbeddedDefinition: %v", err)

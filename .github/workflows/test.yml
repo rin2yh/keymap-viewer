@@ -20,10 +20,10 @@ jobs:
       - name: Install hidapi
         run: brew install hidapi
 
-      # -short forces TestRealHID_Smoke in internal/via to skip without
-      # touching real HID, so this job never depends on a physical device.
+      # -short skips both medium tests and TestRealHID_Smoke, so this job
+      # never depends on a physical device or runs the slower suites.
       - name: small
-        run: go test -race -short -timeout 1m ./internal/keymap/... ./internal/via/... ./internal/viatest/...
+        run: go test -race -short -timeout 1m ./...
 
   medium:
     name: medium
@@ -40,4 +40,4 @@ jobs:
         run: brew install hidapi
 
       - name: medium
-        run: go test -race -timeout 5m ./internal/ui/... ./e2e/...
+        run: go test -race -timeout 5m ./...
