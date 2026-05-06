@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 package keymap
 
 // Snapshot is a fully-materialised keymap read from a VIA device. Data is
