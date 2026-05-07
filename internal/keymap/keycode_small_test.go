@@ -4,13 +4,9 @@ import (
 	"testing"
 )
 
-// White-box test so cases can address the kcXxx constants directly instead
-// of literal QMK hex values.
 func TestLabel(t *testing.T) {
-	// Composite-keycode helpers expressed in terms of the same field layout
-	// the production code uses, so the test stays free of magic hex. The
-	// mod-mask range is identified purely by mods != 0 — it has no prefix
-	// bit, unlike modTap/layerTap whose range minima ARE prefix bits.
+	// modMask has no prefix bit — the range is identified by mods != 0,
+	// unlike modTap/layerTap whose range minima ARE prefix bits.
 	modMask := func(mods uint8, base uint16) uint16 {
 		return uint16(mods)<<modBitsShift | (base & baseKCMask)
 	}
@@ -53,7 +49,6 @@ func TestLabel(t *testing.T) {
 		{"LSft", modifierMin + 1, "LSft"},
 		{"RCtl", modifierMin + 4, "RCtl"},
 
-		// Modern QMK layer-action block: TO/MO/DF/TG/OSL/OSM/TT.
 		{"TO(0)", layerToBase, "TO(0)"},
 		{"TO(1)", layerToBase + 1, "TO(1)"},
 		{"MO(0)", layerMoBase, "MO(0)"},
@@ -68,8 +63,6 @@ func TestLabel(t *testing.T) {
 		{"M0", macroMin, "M0"},
 		{"M5", macroMin + 5, "M5"},
 
-		// Audio / media / system / mouse keys; before the Remap-aligned
-		// label fix these fell through to the hex fallback.
 		{"Mute", kcAudioMute, "Audio\nMute"},
 		{"VolUp", kcAudioVolUp, "Audio\nVol +"},
 		{"VolDown", kcAudioVolDown, "Audio\nVol -"},
@@ -84,17 +77,15 @@ func TestLabel(t *testing.T) {
 		{"WheelUp", kcMouseWheelUp, "Mouse\nWh ↑"},
 		{"MouseAcc0", kcMouseAccel0, "Mouse\nAcc0"},
 
-		// Mouse-key keycode wrapped in a modifier mask: the lookup must
-		// recurse through the basic table so the cap shows the named
-		// mouse action instead of falling back to hex.
+		// Mod-masked composite must recurse through basicKeycodes so the
+		// rendered label still names the mouse action.
 		{"LSft+MouseUp", modMask(modBitShift, kcMouseUp), "LSft+Mouse\n↑"},
 
 		{"unknown", 0xFFFF, "0xFFFF"},
 
 		{"LSft+A", modMask(modBitShift, kcA), "LSft+A"},
 
-		// MT(mod, kc) — Remap-style hold-tap rendering. Asterisk-prefixed
-		// for left-side mods, suffixed for right-side.
+		// MT asterisk position differs by side: prefix for left, suffix for right.
 		{"*Shift", modTap(modBitShift, kcA), "*Shift"},
 		{"*Ctrl", modTap(modBitCtrl, kcZ), "*Ctrl"},
 		{"*Win", modTap(modBitWin, kcSpace), "*Win"},

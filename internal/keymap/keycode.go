@@ -5,28 +5,25 @@ import (
 	"strings"
 )
 
-// QMK keycode space layout. Each composite block is identified by an
-// inclusive start/end pair so case bodies don't carry the magic numbers.
+// QMK keycode-space ranges. Range minima for modTap and layerTap double as
+// prefix bits; modMask has no prefix bit and is identified by mods != 0.
 const (
-	kcNoOp        uint16 = 0x0000 // KC_NO — unassigned
-	kcTransparent uint16 = 0x0001 // KC_TRNS — fall through to lower layer
+	kcNoOp        uint16 = 0x0000
+	kcTransparent uint16 = 0x0001
 
-	// Modifier-only keycodes (LCtl..RWin), 8-wide.
-	modifierMin uint16 = 0x00E0 // KC_LCTL
-	modifierMax uint16 = 0x00E7 // KC_RGUI
+	modifierMin uint16 = 0x00E0
+	modifierMax uint16 = 0x00E7
 
-	// Modifier-masked keycodes (mod + base, e.g. LSFT(KC_A)).
 	// Bits 0x1F00 hold the modifier mask; lower byte is the base keycode.
 	modMaskMin uint16 = 0x0100
 	modMaskMax uint16 = 0x1FFF
 
-	// MT(mod, kc) — modifier-tap. Same bit layout as modMask; the tap base
-	// is intentionally dropped from the rendered label to match Remap.
+	// Same bit layout as modMask; the tap base is intentionally dropped
+	// from the rendered label to match Remap.
 	modTapMin uint16 = 0x2000
 	modTapMax uint16 = 0x3FFF
 
-	// LT(layer, kc) — layer-tap. Bits 0x0F00 are the 4-bit layer index;
-	// lower byte is the base keycode.
+	// Bits 0x0F00 are the 4-bit layer index; lower byte is the base.
 	layerTapMin uint16 = 0x4000
 	layerTapMax uint16 = 0x4FFF
 
@@ -42,7 +39,6 @@ const (
 	layerOsmBase    uint16 = layerActionBase + layerBlockSize*5
 	layerTtBase     uint16 = layerActionBase + layerBlockSize*6
 
-	// Tap-Dance.
 	tapDanceMin uint16 = 0x5700
 	tapDanceMax uint16 = 0x57FF
 
@@ -50,13 +46,12 @@ const (
 	macroMin uint16 = 0x7700
 	macroMax uint16 = 0x77FF
 
-	// Bit-field layout shared by mod-mask, mod-tap, and layer-tap composites.
 	modBitsShift   uint16 = 8
-	baseKCMask     uint16 = 0x00FF // low byte holds the wrapped base keycode
-	layerFieldMask uint16 = 0x000F // LT() layer index occupies 4 bits
+	baseKCMask     uint16 = 0x00FF
+	layerFieldMask uint16 = 0x000F
 )
 
-// Modifier mask bit layout (5 bits = 4 mod bits + 1 right-side flag).
+// 5 bits = 4 mod bits + 1 right-side flag.
 const (
 	modBitCtrl  uint8 = 0x01
 	modBitShift uint8 = 0x02
@@ -68,9 +63,6 @@ const (
 	modAllMask  uint8 = modCoreMask | modBitRight
 )
 
-// Display tokens for the special control keycodes and the trailing
-// fallback. Centralised so tests can match against the same strings the
-// renderer emits.
 const (
 	labelNoOp        = "✗"
 	labelTransparent = "▽"
@@ -205,10 +197,6 @@ var modifierKeycodes = [...]string{
 	"RCtl", "RSft", "RAlt", "RWin",
 }
 
-// Named constants for the basic HID-usage-page subset used in
-// basicKeycodes. Defined here (not just inline as map keys) so white-box
-// tests can drive Label() by name and code maintenance doesn't require
-// reasoning about magic hex values.
 const (
 	kcA uint16 = 0x0004 + iota
 	kcB
@@ -342,7 +330,6 @@ const (
 	kcF24
 )
 
-// Locking & alt-function keys.
 const (
 	kcLockingCapsLock   uint16 = 0x0082
 	kcLockingNumLock    uint16 = 0x0083
@@ -390,14 +377,12 @@ const (
 	kcExSel      uint16 = 0x00A4
 )
 
-// System power keys.
 const (
 	kcSystemPower uint16 = 0x00A5
 	kcSystemSleep uint16 = 0x00A6
 	kcSystemWake  uint16 = 0x00A7
 )
 
-// Audio / media keys.
 const (
 	kcAudioMute    uint16 = 0x00A8
 	kcAudioVolUp   uint16 = 0x00A9
@@ -410,7 +395,6 @@ const (
 	kcMediaEject   uint16 = 0x00B0
 )
 
-// Web / launcher / system shortcut keys.
 const (
 	kcMail             uint16 = 0x00B1
 	kcCalculator       uint16 = 0x00B2
@@ -432,7 +416,6 @@ const (
 	kcLaunchpad        uint16 = 0x00C2
 )
 
-// Mouse keys.
 const (
 	kcMouseUp         uint16 = 0x00CD
 	kcMouseDown       uint16 = 0x00CE
