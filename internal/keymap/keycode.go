@@ -252,24 +252,24 @@ const (
 )
 
 const (
-	kcEnter         uint16 = 0x0028
-	kcEscape        uint16 = 0x0029
-	kcBackspace     uint16 = 0x002A
-	kcTab           uint16 = 0x002B
-	kcSpace         uint16 = 0x002C
-	kcMinus         uint16 = 0x002D
-	kcEqual         uint16 = 0x002E
-	kcLeftBracket   uint16 = 0x002F
-	kcRightBracket  uint16 = 0x0030
-	kcBackslash     uint16 = 0x0031
-	kcNonUSHash     uint16 = 0x0032
-	kcSemicolon     uint16 = 0x0033
-	kcQuote         uint16 = 0x0034
-	kcGrave         uint16 = 0x0035
-	kcComma         uint16 = 0x0036
-	kcDot           uint16 = 0x0037
-	kcSlash         uint16 = 0x0038
-	kcCapsLock      uint16 = 0x0039
+	kcEnter        uint16 = 0x0028
+	kcEscape       uint16 = 0x0029
+	kcBackspace    uint16 = 0x002A
+	kcTab          uint16 = 0x002B
+	kcSpace        uint16 = 0x002C
+	kcMinus        uint16 = 0x002D
+	kcEqual        uint16 = 0x002E
+	kcLeftBracket  uint16 = 0x002F
+	kcRightBracket uint16 = 0x0030
+	kcBackslash    uint16 = 0x0031
+	kcNonUSHash    uint16 = 0x0032
+	kcSemicolon    uint16 = 0x0033
+	kcQuote        uint16 = 0x0034
+	kcGrave        uint16 = 0x0035
+	kcComma        uint16 = 0x0036
+	kcDot          uint16 = 0x0037
+	kcSlash        uint16 = 0x0038
+	kcCapsLock     uint16 = 0x0039
 )
 
 const (
@@ -304,27 +304,27 @@ const (
 )
 
 const (
-	kcNumLock  uint16 = 0x0053
-	kcKPSlash  uint16 = 0x0054
-	kcKPStar   uint16 = 0x0055
-	kcKPMinus  uint16 = 0x0056
-	kcKPPlus   uint16 = 0x0057
-	kcKPEnter  uint16 = 0x0058
-	kcKP1      uint16 = 0x0059
-	kcKP2      uint16 = 0x005A
-	kcKP3      uint16 = 0x005B
-	kcKP4      uint16 = 0x005C
-	kcKP5      uint16 = 0x005D
-	kcKP6      uint16 = 0x005E
-	kcKP7      uint16 = 0x005F
-	kcKP8      uint16 = 0x0060
-	kcKP9      uint16 = 0x0061
-	kcKP0      uint16 = 0x0062
-	kcKPDot    uint16 = 0x0063
-	kcNonUSBS  uint16 = 0x0064
-	kcApp      uint16 = 0x0065
-	kcKBPower  uint16 = 0x0066
-	kcKPEqual  uint16 = 0x0067
+	kcNumLock uint16 = 0x0053
+	kcKPSlash uint16 = 0x0054
+	kcKPStar  uint16 = 0x0055
+	kcKPMinus uint16 = 0x0056
+	kcKPPlus  uint16 = 0x0057
+	kcKPEnter uint16 = 0x0058
+	kcKP1     uint16 = 0x0059
+	kcKP2     uint16 = 0x005A
+	kcKP3     uint16 = 0x005B
+	kcKP4     uint16 = 0x005C
+	kcKP5     uint16 = 0x005D
+	kcKP6     uint16 = 0x005E
+	kcKP7     uint16 = 0x005F
+	kcKP8     uint16 = 0x0060
+	kcKP9     uint16 = 0x0061
+	kcKP0     uint16 = 0x0062
+	kcKPDot   uint16 = 0x0063
+	kcNonUSBS uint16 = 0x0064
+	kcApp     uint16 = 0x0065
+	kcKBPower uint16 = 0x0066
+	kcKPEqual uint16 = 0x0067
 )
 
 const (
