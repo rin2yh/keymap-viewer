@@ -5,74 +5,139 @@ import (
 	"strings"
 )
 
+// QMK keycode space layout. Each composite block is identified by an
+// inclusive start/end pair so case bodies don't carry the magic numbers.
+const (
+	kcNoOp        uint16 = 0x0000 // KC_NO — unassigned
+	kcTransparent uint16 = 0x0001 // KC_TRNS — fall through to lower layer
+
+	// Modifier-only keycodes (LCtl..RWin), 8-wide.
+	modifierMin uint16 = 0x00E0 // KC_LCTL
+	modifierMax uint16 = 0x00E7 // KC_RGUI
+
+	// Modifier-masked keycodes (mod + base, e.g. LSFT(KC_A)).
+	// Bits 0x1F00 hold the modifier mask; lower byte is the base keycode.
+	modMaskMin uint16 = 0x0100
+	modMaskMax uint16 = 0x1FFF
+
+	// MT(mod, kc) — modifier-tap. Same bit layout as modMask; the tap base
+	// is intentionally dropped from the rendered label to match Remap.
+	modTapMin uint16 = 0x2000
+	modTapMax uint16 = 0x3FFF
+
+	// LT(layer, kc) — layer-tap. Bits 0x0F00 are the 4-bit layer index;
+	// lower byte is the base keycode.
+	layerTapMin uint16 = 0x4000
+	layerTapMax uint16 = 0x4FFF
+
+	// Modern QMK layer-action block (32 layers per sub-range, 6 sub-ranges).
+	// Order: TO → MO → DF → TG → OSL → OSM → TT.
+	layerActionBase uint16 = 0x5200
+	layerBlockSize  uint16 = 0x0020
+	layerToBase     uint16 = layerActionBase + layerBlockSize*0
+	layerMoBase     uint16 = layerActionBase + layerBlockSize*1
+	layerDfBase     uint16 = layerActionBase + layerBlockSize*2
+	layerTgBase     uint16 = layerActionBase + layerBlockSize*3
+	layerOslBase    uint16 = layerActionBase + layerBlockSize*4
+	layerOsmBase    uint16 = layerActionBase + layerBlockSize*5
+	layerTtBase     uint16 = layerActionBase + layerBlockSize*6
+
+	// Tap-Dance.
+	tapDanceMin uint16 = 0x5700
+	tapDanceMax uint16 = 0x57FF
+
+	// VIA macro range — M0..M255 by convention.
+	macroMin uint16 = 0x7700
+	macroMax uint16 = 0x77FF
+
+	// Bit-field layout shared by mod-mask, mod-tap, and layer-tap composites.
+	modBitsShift   uint16 = 8
+	baseKCMask     uint16 = 0x00FF // low byte holds the wrapped base keycode
+	layerFieldMask uint16 = 0x000F // LT() layer index occupies 4 bits
+)
+
+// Modifier mask bit layout (5 bits = 4 mod bits + 1 right-side flag).
+const (
+	modBitCtrl  uint8 = 0x01
+	modBitShift uint8 = 0x02
+	modBitAlt   uint8 = 0x04
+	modBitWin   uint8 = 0x08
+	modBitRight uint8 = 0x10
+
+	modCoreMask uint8 = modBitCtrl | modBitShift | modBitAlt | modBitWin
+	modAllMask  uint8 = modCoreMask | modBitRight
+)
+
+// Display tokens for the special control keycodes and the trailing
+// fallback. Centralised so tests can match against the same strings the
+// renderer emits.
+const (
+	labelNoOp        = "✗"
+	labelTransparent = "▽"
+	hexLabelFormat   = "0x%04X"
+)
+
 // Label converts a 16-bit QMK keycode to a short, human-readable token.
 // Composite keycodes (LT, MO, TG, modifier-tap, mod-mask) are rendered
 // recursively. Unknown keycodes fall back to the literal hex form.
 func Label(kc uint16) string {
-	switch {
-	case kc == 0x0000:
-		return "✗"
-	case kc == 0x0001:
-		return "▽"
-	case kc < 0x00FF:
-		if s, ok := basicKeycodes[kc]; ok {
-			return s
-		}
+	switch kc {
+	case kcNoOp:
+		return labelNoOp
+	case kcTransparent:
+		return labelTransparent
+	}
+	if s, ok := basicKeycodes[kc]; ok {
+		return s
 	}
 
 	switch {
-	case kc >= 0x00E0 && kc <= 0x00E7:
-		return modifierKeycodes[kc-0x00E0]
+	case kc >= modifierMin && kc <= modifierMax:
+		return modifierKeycodes[kc-modifierMin]
 
-	// Modifier-masked keycodes (mod + base, e.g. LSFT(KC_A)): 0x0100..0x1FFF.
-	// Bits 0x1F00 hold the modifier mask; lower byte is the keycode.
-	case kc >= 0x0100 && kc <= 0x1FFF:
-		mods := uint8((kc >> 8) & 0x1F)
-		base := kc & 0xFF
+	case kc >= modMaskMin && kc <= modMaskMax:
+		mods := uint8(kc>>modBitsShift) & modAllMask
+		base := kc & baseKCMask
 		return formatModMask(mods) + Label(base)
 
-	// MT(mod, kc) — modifier-tap (hold = mod, tap = kc): 0x2000..0x3FFF.
-	// Remap renders these as the modifier name with an asterisk indicating
-	// the hold-tap nature: `*Shift` for left-side mods, `Alt*` for right-side.
-	// The tap keycode is intentionally omitted to match Remap's display.
-	case kc >= 0x2000 && kc <= 0x3FFF:
-		mods := uint8((kc >> 8) & 0x1F)
+	case kc >= modTapMin && kc <= modTapMax:
+		mods := uint8(kc>>modBitsShift) & modAllMask
 		return formatMTMod(mods)
 
-	// LT(layer, kc): 0x4000..0x4FFF. layer = (kc >> 8) & 0x0F
-	case kc >= 0x4000 && kc <= 0x4FFF:
-		layer := (kc >> 8) & 0x0F
-		base := kc & 0xFF
+	case kc >= layerTapMin && kc <= layerTapMax:
+		layer := (kc >> modBitsShift) & layerFieldMask
+		base := kc & baseKCMask
 		return fmt.Sprintf("LT%d(%s)", layer, Label(base))
 
-	// Modern QMK / Remap layer & one-shot keycode ranges (32 layers, 5-bit
-	// indices). These supersede the legacy 0x5100-block layout used by older
-	// QMK builds. Order: TO → MO → DF → TG → OSL → OSM → TT.
-	case kc >= 0x5200 && kc <= 0x521F:
-		return fmt.Sprintf("TO(%d)", kc-0x5200)
-	case kc >= 0x5220 && kc <= 0x523F:
-		return fmt.Sprintf("MO(%d)", kc-0x5220)
-	case kc >= 0x5240 && kc <= 0x525F:
-		return fmt.Sprintf("DF(%d)", kc-0x5240)
-	case kc >= 0x5260 && kc <= 0x527F:
-		return fmt.Sprintf("TG(%d)", kc-0x5260)
-	case kc >= 0x5280 && kc <= 0x529F:
-		return fmt.Sprintf("OSL(%d)", kc-0x5280)
-	case kc >= 0x52A0 && kc <= 0x52BF:
-		return "OSM(" + strings.Join(modList(uint8(kc&0x1F)), "+") + ")"
-	case kc >= 0x52C0 && kc <= 0x52DF:
-		return fmt.Sprintf("TT(%d)", kc-0x52C0)
+	case inLayerBlock(kc, layerToBase):
+		return fmt.Sprintf("TO(%d)", kc-layerToBase)
+	case inLayerBlock(kc, layerMoBase):
+		return fmt.Sprintf("MO(%d)", kc-layerMoBase)
+	case inLayerBlock(kc, layerDfBase):
+		return fmt.Sprintf("DF(%d)", kc-layerDfBase)
+	case inLayerBlock(kc, layerTgBase):
+		return fmt.Sprintf("TG(%d)", kc-layerTgBase)
+	case inLayerBlock(kc, layerOslBase):
+		return fmt.Sprintf("OSL(%d)", kc-layerOslBase)
+	case inLayerBlock(kc, layerOsmBase):
+		return "OSM(" + strings.Join(modList(uint8(kc)&modAllMask), "+") + ")"
+	case inLayerBlock(kc, layerTtBase):
+		return fmt.Sprintf("TT(%d)", kc-layerTtBase)
 
-	// Tap-Dance: 0x5700..0x57FF
-	case kc >= 0x5700 && kc <= 0x57FF:
-		return fmt.Sprintf("TD(%d)", kc-0x5700)
+	case kc >= tapDanceMin && kc <= tapDanceMax:
+		return fmt.Sprintf("TD(%d)", kc-tapDanceMin)
 
-	// Macros: VIA exposes M0..M15 at 0x7700..0x770F by convention.
-	case kc >= 0x7700 && kc <= 0x77FF:
-		return fmt.Sprintf("M%d", kc-0x7700)
+	case kc >= macroMin && kc <= macroMax:
+		return fmt.Sprintf("M%d", kc-macroMin)
 	}
 
-	return fmt.Sprintf("0x%04X", kc)
+	return fmt.Sprintf(hexLabelFormat, kc)
+}
+
+// inLayerBlock reports whether kc falls in the [base, base+layerBlockSize)
+// sub-range of the modern layer-action block.
+func inLayerBlock(kc, base uint16) bool {
+	return kc >= base && kc < base+layerBlockSize
 }
 
 // formatMTMod renders a single MT(mod, kc) hold-side modifier the way Remap
@@ -80,16 +145,16 @@ func Label(kc uint16) string {
 // before for left-side mods (`*Shift`) and after for right-side (`Alt*`).
 // Combinations of mods fall back to the generic mod-mask formatter.
 func formatMTMod(mods uint8) string {
-	right := mods&0x10 != 0
+	right := mods&modBitRight != 0
 	var name string
-	switch mods & 0x0F {
-	case 0x01:
+	switch mods & modCoreMask {
+	case modBitCtrl:
 		name = "Ctrl"
-	case 0x02:
+	case modBitShift:
 		name = "Shift"
-	case 0x04:
+	case modBitAlt:
 		name = "Alt"
-	case 0x08:
+	case modBitWin:
 		name = "Win"
 	default:
 		return formatModMask(mods) + "*"
@@ -110,26 +175,26 @@ func formatModMask(mods uint8) string {
 }
 
 // modList expands a 5-bit modifier mask into per-mod tokens (e.g. "LCtl",
-// "RSft"). Bit 0x10 selects the right-hand side variants.
+// "RSft"). The right-side flag selects the right-hand variants.
 func modList(mods uint8) []string {
 	if mods == 0 {
 		return nil
 	}
 	prefix := "L"
-	if mods&0x10 != 0 {
+	if mods&modBitRight != 0 {
 		prefix = "R"
 	}
 	var out []string
-	if mods&0x01 != 0 {
+	if mods&modBitCtrl != 0 {
 		out = append(out, prefix+"Ctl")
 	}
-	if mods&0x02 != 0 {
+	if mods&modBitShift != 0 {
 		out = append(out, prefix+"Sft")
 	}
-	if mods&0x04 != 0 {
+	if mods&modBitAlt != 0 {
 		out = append(out, prefix+"Alt")
 	}
-	if mods&0x08 != 0 {
+	if mods&modBitWin != 0 {
 		out = append(out, prefix+"Win")
 	}
 	return out
@@ -140,98 +205,357 @@ var modifierKeycodes = [...]string{
 	"RCtl", "RSft", "RAlt", "RWin",
 }
 
+// Named constants for the basic HID-usage-page subset used in
+// basicKeycodes. Defined here (not just inline as map keys) so white-box
+// tests can drive Label() by name and code maintenance doesn't require
+// reasoning about magic hex values.
+const (
+	kcA uint16 = 0x0004 + iota
+	kcB
+	kcC
+	kcD
+	kcE
+	kcF
+	kcG
+	kcH
+	kcI
+	kcJ
+	kcK
+	kcL
+	kcM
+	kcN
+	kcO
+	kcP
+	kcQ
+	kcR
+	kcS
+	kcT
+	kcU
+	kcV
+	kcW
+	kcX
+	kcY
+	kcZ
+)
+
+const (
+	kc1 uint16 = 0x001E + iota
+	kc2
+	kc3
+	kc4
+	kc5
+	kc6
+	kc7
+	kc8
+	kc9
+	kc0
+)
+
+const (
+	kcEnter         uint16 = 0x0028
+	kcEscape        uint16 = 0x0029
+	kcBackspace     uint16 = 0x002A
+	kcTab           uint16 = 0x002B
+	kcSpace         uint16 = 0x002C
+	kcMinus         uint16 = 0x002D
+	kcEqual         uint16 = 0x002E
+	kcLeftBracket   uint16 = 0x002F
+	kcRightBracket  uint16 = 0x0030
+	kcBackslash     uint16 = 0x0031
+	kcNonUSHash     uint16 = 0x0032
+	kcSemicolon     uint16 = 0x0033
+	kcQuote         uint16 = 0x0034
+	kcGrave         uint16 = 0x0035
+	kcComma         uint16 = 0x0036
+	kcDot           uint16 = 0x0037
+	kcSlash         uint16 = 0x0038
+	kcCapsLock      uint16 = 0x0039
+)
+
+const (
+	kcF1 uint16 = 0x003A + iota
+	kcF2
+	kcF3
+	kcF4
+	kcF5
+	kcF6
+	kcF7
+	kcF8
+	kcF9
+	kcF10
+	kcF11
+	kcF12
+)
+
+const (
+	kcPrintScreen uint16 = 0x0046
+	kcScrollLock  uint16 = 0x0047
+	kcPause       uint16 = 0x0048
+	kcInsert      uint16 = 0x0049
+	kcHome        uint16 = 0x004A
+	kcPageUp      uint16 = 0x004B
+	kcDelete      uint16 = 0x004C
+	kcEnd         uint16 = 0x004D
+	kcPageDown    uint16 = 0x004E
+	kcRight       uint16 = 0x004F
+	kcLeft        uint16 = 0x0050
+	kcDown        uint16 = 0x0051
+	kcUp          uint16 = 0x0052
+)
+
+const (
+	kcNumLock  uint16 = 0x0053
+	kcKPSlash  uint16 = 0x0054
+	kcKPStar   uint16 = 0x0055
+	kcKPMinus  uint16 = 0x0056
+	kcKPPlus   uint16 = 0x0057
+	kcKPEnter  uint16 = 0x0058
+	kcKP1      uint16 = 0x0059
+	kcKP2      uint16 = 0x005A
+	kcKP3      uint16 = 0x005B
+	kcKP4      uint16 = 0x005C
+	kcKP5      uint16 = 0x005D
+	kcKP6      uint16 = 0x005E
+	kcKP7      uint16 = 0x005F
+	kcKP8      uint16 = 0x0060
+	kcKP9      uint16 = 0x0061
+	kcKP0      uint16 = 0x0062
+	kcKPDot    uint16 = 0x0063
+	kcNonUSBS  uint16 = 0x0064
+	kcApp      uint16 = 0x0065
+	kcKBPower  uint16 = 0x0066
+	kcKPEqual  uint16 = 0x0067
+)
+
+const (
+	kcF13 uint16 = 0x0068 + iota
+	kcF14
+	kcF15
+	kcF16
+	kcF17
+	kcF18
+	kcF19
+	kcF20
+	kcF21
+	kcF22
+	kcF23
+	kcF24
+)
+
+// Locking & alt-function keys.
+const (
+	kcLockingCapsLock   uint16 = 0x0082
+	kcLockingNumLock    uint16 = 0x0083
+	kcLockingScrollLock uint16 = 0x0084
+	kcKPComma           uint16 = 0x0085
+	kcKPEqualAS400      uint16 = 0x0086
+)
+
+const (
+	kcInt1 uint16 = 0x0087 + iota
+	kcInt2
+	kcInt3
+	kcInt4
+	kcInt5
+	kcInt6
+	kcInt7
+	kcInt8
+	kcInt9
+)
+
+const (
+	kcLang1 uint16 = 0x0090 + iota
+	kcLang2
+	kcLang3
+	kcLang4
+	kcLang5
+	kcLang6
+	kcLang7
+	kcLang8
+	kcLang9
+)
+
+const (
+	kcAltErase   uint16 = 0x0099
+	kcSysReq     uint16 = 0x009A
+	kcCancel     uint16 = 0x009B
+	kcClear      uint16 = 0x009C
+	kcPrior      uint16 = 0x009D
+	kcReturn     uint16 = 0x009E
+	kcSeparator  uint16 = 0x009F
+	kcOut        uint16 = 0x00A0
+	kcOper       uint16 = 0x00A1
+	kcClearAgain uint16 = 0x00A2
+	kcCrSel      uint16 = 0x00A3
+	kcExSel      uint16 = 0x00A4
+)
+
+// System power keys.
+const (
+	kcSystemPower uint16 = 0x00A5
+	kcSystemSleep uint16 = 0x00A6
+	kcSystemWake  uint16 = 0x00A7
+)
+
+// Audio / media keys.
+const (
+	kcAudioMute    uint16 = 0x00A8
+	kcAudioVolUp   uint16 = 0x00A9
+	kcAudioVolDown uint16 = 0x00AA
+	kcMediaNext    uint16 = 0x00AB
+	kcMediaPrev    uint16 = 0x00AC
+	kcMediaStop    uint16 = 0x00AD
+	kcMediaPlay    uint16 = 0x00AE
+	kcMediaSelect  uint16 = 0x00AF
+	kcMediaEject   uint16 = 0x00B0
+)
+
+// Web / launcher / system shortcut keys.
+const (
+	kcMail             uint16 = 0x00B1
+	kcCalculator       uint16 = 0x00B2
+	kcMyComputer       uint16 = 0x00B3
+	kcWWWSearch        uint16 = 0x00B4
+	kcWWWHome          uint16 = 0x00B5
+	kcWWWBack          uint16 = 0x00B6
+	kcWWWForward       uint16 = 0x00B7
+	kcWWWStop          uint16 = 0x00B8
+	kcWWWRefresh       uint16 = 0x00B9
+	kcWWWFavorite      uint16 = 0x00BA
+	kcMediaFastForward uint16 = 0x00BB
+	kcMediaRewind      uint16 = 0x00BC
+	kcBrightnessUp     uint16 = 0x00BD
+	kcBrightnessDown   uint16 = 0x00BE
+	kcControlPanel     uint16 = 0x00BF
+	kcAssistant        uint16 = 0x00C0
+	kcMissionControl   uint16 = 0x00C1
+	kcLaunchpad        uint16 = 0x00C2
+)
+
+// Mouse keys.
+const (
+	kcMouseUp         uint16 = 0x00CD
+	kcMouseDown       uint16 = 0x00CE
+	kcMouseLeft       uint16 = 0x00CF
+	kcMouseRight      uint16 = 0x00D0
+	kcMouseBtn1       uint16 = 0x00D1
+	kcMouseBtn2       uint16 = 0x00D2
+	kcMouseBtn3       uint16 = 0x00D3
+	kcMouseBtn4       uint16 = 0x00D4
+	kcMouseBtn5       uint16 = 0x00D5
+	kcMouseBtn6       uint16 = 0x00D6
+	kcMouseBtn7       uint16 = 0x00D7
+	kcMouseBtn8       uint16 = 0x00D8
+	kcMouseWheelUp    uint16 = 0x00D9
+	kcMouseWheelDown  uint16 = 0x00DA
+	kcMouseWheelLeft  uint16 = 0x00DB
+	kcMouseWheelRight uint16 = 0x00DC
+	kcMouseAccel0     uint16 = 0x00DD
+	kcMouseAccel1     uint16 = 0x00DE
+	kcMouseAccel2     uint16 = 0x00DF
+)
+
+// basicKeycodes maps each non-composite QMK keycode to the short cap label
+// rendered by Label(). Entries follow Remap's keycode picker text where
+// possible, with multi-word labels split on spaces ("Caps\nLock" etc.) so
+// the auto-shrinking renderer can stack tokens vertically.
 var basicKeycodes = map[uint16]string{
-	0x0004: "A", 0x0005: "B", 0x0006: "C", 0x0007: "D",
-	0x0008: "E", 0x0009: "F", 0x000A: "G", 0x000B: "H",
-	0x000C: "I", 0x000D: "J", 0x000E: "K", 0x000F: "L",
-	0x0010: "M", 0x0011: "N", 0x0012: "O", 0x0013: "P",
-	0x0014: "Q", 0x0015: "R", 0x0016: "S", 0x0017: "T",
-	0x0018: "U", 0x0019: "V", 0x001A: "W", 0x001B: "X",
-	0x001C: "Y", 0x001D: "Z",
+	kcA: "A", kcB: "B", kcC: "C", kcD: "D",
+	kcE: "E", kcF: "F", kcG: "G", kcH: "H",
+	kcI: "I", kcJ: "J", kcK: "K", kcL: "L",
+	kcM: "M", kcN: "N", kcO: "O", kcP: "P",
+	kcQ: "Q", kcR: "R", kcS: "S", kcT: "T",
+	kcU: "U", kcV: "V", kcW: "W", kcX: "X",
+	kcY: "Y", kcZ: "Z",
 
-	0x001E: "1", 0x001F: "2", 0x0020: "3", 0x0021: "4",
-	0x0022: "5", 0x0023: "6", 0x0024: "7", 0x0025: "8",
-	0x0026: "9", 0x0027: "0",
+	kc1: "1", kc2: "2", kc3: "3", kc4: "4", kc5: "5",
+	kc6: "6", kc7: "7", kc8: "8", kc9: "9", kc0: "0",
 
-	0x0028: "Enter", 0x0029: "Esc", 0x002A: "BS", 0x002B: "Tab",
-	0x002C: "Space", 0x002D: "-", 0x002E: "=", 0x002F: "[",
-	0x0030: "]", 0x0031: "\\", 0x0032: "#", 0x0033: ":\n;",
-	0x0034: "\"\n'", 0x0035: "`", 0x0036: "<\n,", 0x0037: ">\n.",
-	0x0038: "?\n/", 0x0039: "Caps\nLock",
+	kcEnter: "Enter", kcEscape: "Esc", kcBackspace: "BS", kcTab: "Tab",
+	kcSpace: "Space", kcMinus: "-", kcEqual: "=", kcLeftBracket: "[",
+	kcRightBracket: "]", kcBackslash: "\\", kcNonUSHash: "#", kcSemicolon: ":\n;",
+	kcQuote: "\"\n'", kcGrave: "`", kcComma: "<\n,", kcDot: ">\n.",
+	kcSlash: "?\n/", kcCapsLock: "Caps\nLock",
 
-	0x003A: "F1", 0x003B: "F2", 0x003C: "F3", 0x003D: "F4",
-	0x003E: "F5", 0x003F: "F6", 0x0040: "F7", 0x0041: "F8",
-	0x0042: "F9", 0x0043: "F10", 0x0044: "F11", 0x0045: "F12",
+	kcF1: "F1", kcF2: "F2", kcF3: "F3", kcF4: "F4",
+	kcF5: "F5", kcF6: "F6", kcF7: "F7", kcF8: "F8",
+	kcF9: "F9", kcF10: "F10", kcF11: "F11", kcF12: "F12",
 
-	0x0046: "PrtSc", 0x0047: "ScrLk", 0x0048: "Pause",
-	0x0049: "Ins", 0x004A: "Home", 0x004B: "PgUp",
-	0x004C: "Del", 0x004D: "End", 0x004E: "PgDn",
-	0x004F: "→", 0x0050: "←", 0x0051: "↓", 0x0052: "↑",
+	kcPrintScreen: "PrtSc", kcScrollLock: "ScrLk", kcPause: "Pause",
+	kcInsert: "Ins", kcHome: "Home", kcPageUp: "PgUp",
+	kcDelete: "Del", kcEnd: "End", kcPageDown: "PgDn",
+	kcRight: "→", kcLeft: "←", kcDown: "↓", kcUp: "↑",
 
-	0x0053: "NumLk", 0x0054: "KP/", 0x0055: "KP*",
-	0x0056: "KP-", 0x0057: "KP+", 0x0058: "KPEnt",
-	0x0059: "KP1", 0x005A: "KP2", 0x005B: "KP3",
-	0x005C: "KP4", 0x005D: "KP5", 0x005E: "KP6",
-	0x005F: "KP7", 0x0060: "KP8", 0x0061: "KP9",
-	0x0062: "KP0", 0x0063: "KP.",
+	kcNumLock: "NumLk", kcKPSlash: "KP/", kcKPStar: "KP*",
+	kcKPMinus: "KP-", kcKPPlus: "KP+", kcKPEnter: "KPEnt",
+	kcKP1: "KP1", kcKP2: "KP2", kcKP3: "KP3",
+	kcKP4: "KP4", kcKP5: "KP5", kcKP6: "KP6",
+	kcKP7: "KP7", kcKP8: "KP8", kcKP9: "KP9",
+	kcKP0: "KP0", kcKPDot: "KP.",
 
-	0x0064: "NUBS", 0x0065: "App", 0x0066: "Power", 0x0067: "KP=",
+	kcNonUSBS: "NUBS", kcApp: "App", kcKBPower: "Power", kcKPEqual: "KP=",
 
-	0x0068: "F13", 0x0069: "F14", 0x006A: "F15", 0x006B: "F16",
-	0x006C: "F17", 0x006D: "F18", 0x006E: "F19", 0x006F: "F20",
-	0x0070: "F21", 0x0071: "F22", 0x0072: "F23", 0x0073: "F24",
+	kcF13: "F13", kcF14: "F14", kcF15: "F15", kcF16: "F16",
+	kcF17: "F17", kcF18: "F18", kcF19: "F19", kcF20: "F20",
+	kcF21: "F21", kcF22: "F22", kcF23: "F23", kcF24: "F24",
 
-	// Rare locking / alt-function keys; Remap labels are kept verbatim with
-	// spaces converted to newlines so the auto-shrinking cap renderer can
-	// stack tokens vertically — matches the existing "Caps\nLock" convention.
-	0x0082: "Locking\nCaps\nLock",
-	0x0083: "Locking\nNum\nLock",
-	0x0084: "Locking\nScroll\nLock",
-	0x0085: "KP,",
-	0x0086: "Num\n=\nAS400",
+	kcLockingCapsLock:   "Locking\nCaps\nLock",
+	kcLockingNumLock:    "Locking\nNum\nLock",
+	kcLockingScrollLock: "Locking\nScroll\nLock",
+	kcKPComma:           "KP,",
+	kcKPEqualAS400:      "Num\n=\nAS400",
 
-	0x0087: "INT1", 0x0088: "INT2", 0x0089: "INT3",
-	0x008A: "INT4", 0x008B: "INT5", 0x008C: "INT6",
-	0x008D: "INT7", 0x008E: "INT8", 0x008F: "INT9",
-	0x0090: "LANG1", 0x0091: "LANG2", 0x0092: "LANG3",
-	0x0093: "LANG4", 0x0094: "LANG5", 0x0095: "LANG6",
-	0x0096: "LANG7", 0x0097: "LANG8", 0x0098: "LANG9",
+	kcInt1: "INT1", kcInt2: "INT2", kcInt3: "INT3",
+	kcInt4: "INT4", kcInt5: "INT5", kcInt6: "INT6",
+	kcInt7: "INT7", kcInt8: "INT8", kcInt9: "INT9",
+	kcLang1: "LANG1", kcLang2: "LANG2", kcLang3: "LANG3",
+	kcLang4: "LANG4", kcLang5: "LANG5", kcLang6: "LANG6",
+	kcLang7: "LANG7", kcLang8: "LANG8", kcLang9: "LANG9",
 
-	0x0099: "Alt\nErase", 0x009A: "SysReq", 0x009B: "Cancel",
-	0x009C: "Clear", 0x009D: "Prior", 0x009E: "Return",
-	0x009F: "Separator",
-	0x00A0: "Out", 0x00A1: "Oper",
-	0x00A2: "Clear/\nAgain", 0x00A3: "CrSel/\nProps", 0x00A4: "ExSel",
+	kcAltErase: "Alt\nErase", kcSysReq: "SysReq", kcCancel: "Cancel",
+	kcClear: "Clear", kcPrior: "Prior", kcReturn: "Return",
+	kcSeparator: "Separator",
+	kcOut:       "Out", kcOper: "Oper",
+	kcClearAgain: "Clear/\nAgain", kcCrSel: "CrSel/\nProps", kcExSel: "ExSel",
 
-	// System power keys.
-	0x00A5: "System\nPower\nDown", 0x00A6: "Sleep", 0x00A7: "Wake",
+	kcSystemPower: "System\nPower\nDown", kcSystemSleep: "Sleep", kcSystemWake: "Wake",
 
-	// Audio / media keys.
-	0x00A8: "Audio\nMute",
-	0x00A9: "Audio\nVol +", 0x00AA: "Audio\nVol -",
-	0x00AB: "Next", 0x00AC: "Previous",
-	0x00AD: "Media\nStop", 0x00AE: "Play", 0x00AF: "Select",
-	0x00B0: "Eject",
+	kcAudioMute:    "Audio\nMute",
+	kcAudioVolUp:   "Audio\nVol +",
+	kcAudioVolDown: "Audio\nVol -",
+	kcMediaNext:    "Next",
+	kcMediaPrev:    "Previous",
+	kcMediaStop:    "Media\nStop",
+	kcMediaPlay:    "Play",
+	kcMediaSelect:  "Select",
+	kcMediaEject:   "Eject",
 
-	// Web / launcher / system shortcut keys.
-	0x00B1: "Mail", 0x00B2: "Calculator", 0x00B3: "My\nComputer",
-	0x00B4: "WWW\nSearch", 0x00B5: "WWW\nHome",
-	0x00B6: "WWW\nBack", 0x00B7: "WWW\nForward",
-	0x00B8: "WWW\nStop", 0x00B9: "WWW\nRefresh",
-	0x00BA: "WWW\nFavorite",
-	0x00BB: "Fast\nForward", 0x00BC: "Rewind",
-	0x00BD: "Screen +", 0x00BE: "Screen -",
-	0x00BF: "Open\nControl\nPanel",
-	0x00C0: "Assistant", 0x00C1: "Mission\nControl", 0x00C2: "Launchpad",
+	kcMail:             "Mail",
+	kcCalculator:       "Calculator",
+	kcMyComputer:       "My\nComputer",
+	kcWWWSearch:        "WWW\nSearch",
+	kcWWWHome:          "WWW\nHome",
+	kcWWWBack:          "WWW\nBack",
+	kcWWWForward:       "WWW\nForward",
+	kcWWWStop:          "WWW\nStop",
+	kcWWWRefresh:       "WWW\nRefresh",
+	kcWWWFavorite:      "WWW\nFavorite",
+	kcMediaFastForward: "Fast\nForward",
+	kcMediaRewind:      "Rewind",
+	kcBrightnessUp:     "Screen +",
+	kcBrightnessDown:   "Screen -",
+	kcControlPanel:     "Open\nControl\nPanel",
+	kcAssistant:        "Assistant",
+	kcMissionControl:   "Mission\nControl",
+	kcLaunchpad:        "Launchpad",
 
-	// Mouse keys.
-	0x00CD: "Mouse\n↑", 0x00CE: "Mouse\n↓",
-	0x00CF: "Mouse\n←", 0x00D0: "Mouse\n→",
-	0x00D1: "Mouse\nBtn1", 0x00D2: "Mouse\nBtn2",
-	0x00D3: "Mouse\nBtn3", 0x00D4: "Mouse\nBtn4",
-	0x00D5: "Mouse\nBtn5", 0x00D6: "Mouse\nBtn6",
-	0x00D7: "Mouse\nBtn7", 0x00D8: "Mouse\nBtn8",
-	0x00D9: "Mouse\nWh ↑", 0x00DA: "Mouse\nWh ↓",
-	0x00DB: "Mouse\nWh ←", 0x00DC: "Mouse\nWh →",
-	0x00DD: "Mouse\nAcc0", 0x00DE: "Mouse\nAcc1", 0x00DF: "Mouse\nAcc2",
+	kcMouseUp: "Mouse\n↑", kcMouseDown: "Mouse\n↓",
+	kcMouseLeft: "Mouse\n←", kcMouseRight: "Mouse\n→",
+	kcMouseBtn1: "Mouse\nBtn1", kcMouseBtn2: "Mouse\nBtn2",
+	kcMouseBtn3: "Mouse\nBtn3", kcMouseBtn4: "Mouse\nBtn4",
+	kcMouseBtn5: "Mouse\nBtn5", kcMouseBtn6: "Mouse\nBtn6",
+	kcMouseBtn7: "Mouse\nBtn7", kcMouseBtn8: "Mouse\nBtn8",
+	kcMouseWheelUp: "Mouse\nWh ↑", kcMouseWheelDown: "Mouse\nWh ↓",
+	kcMouseWheelLeft: "Mouse\nWh ←", kcMouseWheelRight: "Mouse\nWh →",
+	kcMouseAccel0: "Mouse\nAcc0", kcMouseAccel1: "Mouse\nAcc1", kcMouseAccel2: "Mouse\nAcc2",
 }

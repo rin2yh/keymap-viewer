@@ -1,102 +1,109 @@
-package keymap_test
+package keymap
 
 import (
 	"testing"
-
-	"github.com/rin2yh/keymap-viewer/internal/keymap"
 )
 
+// White-box test so cases can address the kcXxx constants directly instead
+// of literal QMK hex values.
 func TestLabel(t *testing.T) {
+	// Composite-keycode helpers expressed in terms of the same field layout
+	// the production code uses, so the test stays free of magic hex. The
+	// mod-mask range is identified purely by mods != 0 — it has no prefix
+	// bit, unlike modTap/layerTap whose range minima ARE prefix bits.
+	modMask := func(mods uint8, base uint16) uint16 {
+		return uint16(mods)<<modBitsShift | (base & baseKCMask)
+	}
+	modTap := func(mods uint8, base uint16) uint16 {
+		return modTapMin | uint16(mods)<<modBitsShift | (base & baseKCMask)
+	}
+	layerTap := func(layer uint16, base uint16) uint16 {
+		return layerTapMin | (layer&layerFieldMask)<<modBitsShift | (base & baseKCMask)
+	}
+
 	tests := []struct {
 		name string
 		kc   uint16
 		want string
 	}{
-		{"no-op", 0x0000, "✗"},
-		{"transparent", 0x0001, "▽"},
+		{"no-op", kcNoOp, labelNoOp},
+		{"transparent", kcTransparent, labelTransparent},
 
-		{"A", 0x0004, "A"},
-		{"Z", 0x001D, "Z"},
-		{"1", 0x001E, "1"},
-		{"0", 0x0027, "0"},
-		{"minus", 0x002D, "-"},
+		{"A", kcA, "A"},
+		{"Z", kcZ, "Z"},
+		{"1", kc1, "1"},
+		{"0", kc0, "0"},
+		{"minus", kcMinus, "-"},
 
-		{"BS", 0x002A, "BS"},
-		{"Space", 0x002C, "Space"},
-		{"Caps Lock", 0x0039, "Caps\nLock"},
-		{"slash", 0x0038, "?\n/"},
-		{"semicolon", 0x0033, ":\n;"},
-		{"comma", 0x0036, "<\n,"},
-		{"period", 0x0037, ">\n."},
-		{"quote", 0x0034, "\"\n'"},
+		{"BS", kcBackspace, "BS"},
+		{"Space", kcSpace, "Space"},
+		{"Caps Lock", kcCapsLock, "Caps\nLock"},
+		{"slash", kcSlash, "?\n/"},
+		{"semicolon", kcSemicolon, ":\n;"},
+		{"comma", kcComma, "<\n,"},
+		{"period", kcDot, ">\n."},
+		{"quote", kcQuote, "\"\n'"},
 
-		{"Right", 0x004F, "→"},
-		{"Left", 0x0050, "←"},
-		{"Down", 0x0051, "↓"},
-		{"Up", 0x0052, "↑"},
+		{"Right", kcRight, "→"},
+		{"Left", kcLeft, "←"},
+		{"Down", kcDown, "↓"},
+		{"Up", kcUp, "↑"},
 
-		{"LCtl", 0x00E0, "LCtl"},
-		{"LSft", 0x00E1, "LSft"},
-		{"RCtl", 0x00E4, "RCtl"},
+		{"LCtl", modifierMin, "LCtl"},
+		{"LSft", modifierMin + 1, "LSft"},
+		{"RCtl", modifierMin + 4, "RCtl"},
 
-		// Modern QMK keycode block: TO=0x5200, MO=0x5220, DF=0x5240,
-		// TG=0x5260, OSL=0x5280, OSM=0x52A0, TT=0x52C0.
-		{"TO(0)", 0x5200, "TO(0)"},
-		{"TO(1)", 0x5201, "TO(1)"},
-		{"MO(0)", 0x5220, "MO(0)"},
-		{"MO(3)", 0x5223, "MO(3)"},
-		{"TG(0)", 0x5260, "TG(0)"},
-		{"OSM(LCtl)", 0x52A1, "OSM(LCtl)"},
-		{"OSM(LCtl+LSft)", 0x52A3, "OSM(LCtl+LSft)"},
-		{"TT(2)", 0x52C2, "TT(2)"},
+		// Modern QMK layer-action block: TO/MO/DF/TG/OSL/OSM/TT.
+		{"TO(0)", layerToBase, "TO(0)"},
+		{"TO(1)", layerToBase + 1, "TO(1)"},
+		{"MO(0)", layerMoBase, "MO(0)"},
+		{"MO(3)", layerMoBase + 3, "MO(3)"},
+		{"TG(0)", layerTgBase, "TG(0)"},
+		{"OSM(LCtl)", layerOsmBase | uint16(modBitCtrl), "OSM(LCtl)"},
+		{"OSM(LCtl+LSft)", layerOsmBase | uint16(modBitCtrl|modBitShift), "OSM(LCtl+LSft)"},
+		{"TT(2)", layerTtBase + 2, "TT(2)"},
 
-		// LT(layer, kc): bits[11:8] = layer, bits[7:0] = base keycode.
-		// 0x4104 = layer 1 with KC_A (0x04).
-		{"LT1(A)", 0x4104, "LT1(A)"},
+		{"LT1(A)", layerTap(1, kcA), "LT1(A)"},
 
-		{"M0", 0x7700, "M0"},
-		{"M5", 0x7705, "M5"},
+		{"M0", macroMin, "M0"},
+		{"M5", macroMin + 5, "M5"},
 
-		// Audio / media / system / mouse keys; before this fix these fell
-		// through to the hex fallback. Labels mirror Remap's keycode picker
-		// strings with spaces converted to newlines for cap rendering.
-		{"Mute", 0x00A8, "Audio\nMute"},
-		{"VolUp", 0x00A9, "Audio\nVol +"},
-		{"VolDown", 0x00AA, "Audio\nVol -"},
-		{"Next", 0x00AB, "Next"},
-		{"Play", 0x00AE, "Play"},
-		{"Sleep", 0x00A6, "Sleep"},
-		{"Mail", 0x00B1, "Mail"},
-		{"BrightUp", 0x00BD, "Screen +"},
-		{"MissionControl", 0x00C1, "Mission\nControl"},
-		{"MouseUp", 0x00CD, "Mouse\n↑"},
-		{"MouseBtn1", 0x00D1, "Mouse\nBtn1"},
-		{"WheelUp", 0x00D9, "Mouse\nWh ↑"},
-		{"MouseAcc0", 0x00DD, "Mouse\nAcc0"},
+		// Audio / media / system / mouse keys; before the Remap-aligned
+		// label fix these fell through to the hex fallback.
+		{"Mute", kcAudioMute, "Audio\nMute"},
+		{"VolUp", kcAudioVolUp, "Audio\nVol +"},
+		{"VolDown", kcAudioVolDown, "Audio\nVol -"},
+		{"Next", kcMediaNext, "Next"},
+		{"Play", kcMediaPlay, "Play"},
+		{"Sleep", kcSystemSleep, "Sleep"},
+		{"Mail", kcMail, "Mail"},
+		{"BrightUp", kcBrightnessUp, "Screen +"},
+		{"MissionControl", kcMissionControl, "Mission\nControl"},
+		{"MouseUp", kcMouseUp, "Mouse\n↑"},
+		{"MouseBtn1", kcMouseBtn1, "Mouse\nBtn1"},
+		{"WheelUp", kcMouseWheelUp, "Mouse\nWh ↑"},
+		{"MouseAcc0", kcMouseAccel0, "Mouse\nAcc0"},
 
 		// Mouse-key keycode wrapped in a modifier mask: the lookup must
-		// recurse through the basic-table fix so the cap shows the named
-		// mouse action instead of `…+0xCD`.
-		{"LSft+MouseUp", 0x02CD, "LSft+Mouse\n↑"},
+		// recurse through the basic table so the cap shows the named
+		// mouse action instead of falling back to hex.
+		{"LSft+MouseUp", modMask(modBitShift, kcMouseUp), "LSft+Mouse\n↑"},
 
 		{"unknown", 0xFFFF, "0xFFFF"},
 
-		{"LSft+A", 0x0204, "LSft+A"},
+		{"LSft+A", modMask(modBitShift, kcA), "LSft+A"},
 
-		// MT(mod, kc) — Remap-style hold-tap rendering.
-		// MT(MOD_LSFT, KC_A) = 0x2000 | (0x02 << 8) | 0x04 = 0x2204.
-		{"*Shift", 0x2204, "*Shift"},
-		// MT(MOD_LCTL, KC_Z) = 0x2000 | (0x01 << 8) | 0x1D = 0x211D.
-		{"*Ctrl", 0x211D, "*Ctrl"},
-		// MT(MOD_LGUI, KC_SPC) = 0x2000 | (0x08 << 8) | 0x2C = 0x282C.
-		{"*Win", 0x282C, "*Win"},
-		// MT(MOD_RALT, KC_SLASH) = 0x2000 | (0x14 << 8) | 0x38 = 0x3438.
-		{"Alt*", 0x3438, "Alt*"},
+		// MT(mod, kc) — Remap-style hold-tap rendering. Asterisk-prefixed
+		// for left-side mods, suffixed for right-side.
+		{"*Shift", modTap(modBitShift, kcA), "*Shift"},
+		{"*Ctrl", modTap(modBitCtrl, kcZ), "*Ctrl"},
+		{"*Win", modTap(modBitWin, kcSpace), "*Win"},
+		{"Alt*", modTap(modBitRight|modBitAlt, kcSlash), "Alt*"},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := keymap.Label(tc.kc)
+			got := Label(tc.kc)
 			if got != tc.want {
 				t.Errorf("Label(0x%04X) = %q, want %q", tc.kc, got, tc.want)
 			}
