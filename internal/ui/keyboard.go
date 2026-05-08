@@ -10,11 +10,19 @@ import (
 )
 
 // keyUnitPx is the on-screen pixel size of a 1u key cell BEFORE the scale
-// factor — the actual unit is unitPx * context.Scale().
+// factor — the actual unit is unitPx * context.Scale(). It is also the
+// natural / minimum size used when the available bounds are larger than the
+// keymap or when fitting cannot be computed.
 const keyUnitPx = 56
 
-// keyGapPx is the inset around each key inside its 1u cell.
-const keyGapPx = 4
+// keyGapRatio is the inset around each key as a fraction of the unit size,
+// so the gap shrinks/grows together with the keys when the window resizes.
+// 4/56 matches the previous fixed 4px gap at the default 56px unit.
+const keyGapRatio = 4.0 / 56.0
+
+// keyMinUnitPx caps how small a 1u cell may shrink before key labels stop
+// being legible.
+const keyMinUnitPx = 18
 
 // Keyboard is the custom widget that lays out the Corne v4 Chocolate keys at
 // VIA-defined absolute positions. guigui itself does not yet support absolute
@@ -120,7 +128,8 @@ func (k *Keyboard) Layout(context *guigui.Context, widgetBounds *guigui.WidgetBo
 		return
 	}
 	bounds := widgetBounds.Bounds()
-	unit := unitPixels(context)
+	unit := k.fitUnit(context, bounds)
+	gap := int(math.Round(float64(unit) * keyGapRatio))
 	totalW := (k.maxX - k.minX) * float64(unit)
 	totalH := (k.maxY - k.minY) * float64(unit)
 	offX := bounds.Min.X + (bounds.Dx()-int(totalW))/2 - int(k.minX*float64(unit))
@@ -128,13 +137,31 @@ func (k *Keyboard) Layout(context *guigui.Context, widgetBounds *guigui.WidgetBo
 
 	for i, a := range k.keyAABBs {
 		rect := image.Rect(
-			offX+int(a.x0*float64(unit))+keyGapPx,
-			offY+int(a.y0*float64(unit))+keyGapPx,
-			offX+int(a.x1*float64(unit))-keyGapPx,
-			offY+int(a.y1*float64(unit))-keyGapPx,
+			offX+int(a.x0*float64(unit))+gap,
+			offY+int(a.y0*float64(unit))+gap,
+			offX+int(a.x1*float64(unit))-gap,
+			offY+int(a.y1*float64(unit))-gap,
 		)
 		layouter.LayoutWidget(&k.buttons[i], rect)
 	}
+}
+
+// fitUnit returns the per-unit pixel size that fits the keymap into bounds.
+// If bounds are larger than the natural size, the unit grows so the keymap
+// fills the available space; if smaller, it shrinks down to keyMinUnitPx so
+// labels remain legible.
+func (k *Keyboard) fitUnit(context *guigui.Context, bounds image.Rectangle) int {
+	widthU := k.maxX - k.minX
+	heightU := k.maxY - k.minY
+	if widthU <= 0 || heightU <= 0 || bounds.Dx() <= 0 || bounds.Dy() <= 0 {
+		return unitPixels(context)
+	}
+	fit := math.Min(float64(bounds.Dx())/widthU, float64(bounds.Dy())/heightU)
+	minPx := math.Round(keyMinUnitPx * context.Scale())
+	if fit < minPx {
+		fit = minPx
+	}
+	return int(math.Floor(fit))
 }
 
 func (k *Keyboard) Measure(context *guigui.Context, _ guigui.Constraints) image.Point {
